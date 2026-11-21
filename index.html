@@ -1,205 +1,299 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Platform Belajar XR - 3D Sketch & AI Tutor</title>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <style>
-    body { margin: 0; font-family: sans-serif; }
-    #hud {
-      position: fixed; top: 12px; left: 12px; z-index: 999;
-      background: rgba(15, 23, 42, 0.85); color: #fff;
-      padding: 12px 16px; border-radius: 10px; max-width: 340px;
-      font-size: 13px; line-height: 1.4;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SpatialInk · WebXR 3D Vector & Force Lab (Group 4 · Eau de Vision Pemula)</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230284c7'/%3E%3Cstop offset='0.55' stop-color='%2338bdf8'/%3E%3Cstop offset='1' stop-color='%2334d399'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='28' fill='%2304101f'%3ESI%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
     }
-    #hud button {
-      margin-top: 8px; padding: 6px 12px; border: none; border-radius: 6px;
-      background: #38bdf8; color: #0f172a; font-weight: bold; cursor: pointer;
-    }
-    #ai-box { display: none; margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px; }
-    #ai-box input { width: 72%; padding: 5px; border-radius: 4px; border: none; }
-    #ai-log { margin-top: 8px; max-height: 110px; overflow-y: auto; font-size: 12px; color: #cbd5e1; }
-  </style>
+  </script>
 </head>
 <body>
+  <!-- 3D WebXR / Three.js Viewport -->
+  <div id="canvas-container" aria-label="SpatialInk 3D Vector Coordinate Workspace"></div>
 
-  <!-- UI Overlay (Untuk Mode Browser Laptop) -->
-  <div id="hud">
-    <b>Platform Belajar XR (3D Sketch)</b><br>
-    • <b>Laptop:</b> WASD Gerak | Tahan <b>Spasi</b> Gambar<br>
-    • <b>VR Headset:</b> Analog Jalan | Tahan <b>Trigger</b> Gambar | <b>A/B</b> Hapus<br>
-    <button onclick="bukaAI()">🤖 Panggil AI Tutor</button>
-    <button onclick="hapusCoretan()" style="background:#f87171;">Hapus Coretan</button>
+  <!-- Top Navigation Bar -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="brand-mark">SI</div>
+      <div>
+        <div class="brand-title">SpatialInk</div>
+        <div class="brand-sub">Group 4 · Eau de Vision Pemula · WebXR</div>
+      </div>
+    </div>
 
-    <div id="ai-box">
-      <div id="ai-subtitle" style="color:#38bdf8; font-weight:bold;">AI: "Mau nanya apa?"</div>
-      <input type="text" id="pertanyaan" placeholder="Ketik pertanyaan soal...">
-      <button onclick="kirimTanya()">Kirim</button>
-      <div id="ai-log"><b>Log Percakapan:</b><br></div>
+    <nav id="exercise-tabs" aria-label="3D Vector Exercises"></nav>
+
+    <div class="topbar-actions">
+      <button id="btn-enter-ar" class="pill-btn xr-ar" title="Mixed Reality Passthrough (Meta Quest 3)">MR Passthrough</button>
+      <button id="btn-enter-vr" class="pill-btn primary" title="Immersive VR Mode (Quest 2 / Quest 3 / Pico 4)">Enter VR</button>
+      <button id="btn-open-modal" class="pill-btn">Rubric &amp; Provenance</button>
+    </div>
+  </header>
+
+  <!-- Left Panel: Bounded 3D Vector Workspace & Deterministic Validator -->
+  <aside id="left-panel" class="side-panel">
+    <div class="panel-header">
+      <span class="panel-title">3D Vector Workspace</span>
+      <button id="toggle-left-panel" class="collapse-btn">Hide</button>
+    </div>
+    <div class="panel-body">
+      <div>
+        <span id="ex-badge" class="ex-badge">EX-01 · Vector Construction</span>
+        <h1 id="ex-title">Construct a 3D Position Vector</h1>
+        <p id="ex-prompt"></p>
+      </div>
+
+      <div id="ex-formula" class="formula-box"></div>
+
+      <!-- Interaction Mode Switch -->
+      <div class="seg-toggle">
+        <button id="mode-vector" class="seg-btn active">Vector Handle</button>
+        <button id="mode-sketch" class="seg-btn">3D SpatialInk Sketch</button>
+      </div>
+
+      <!-- Freehand 3D Ink Controls (visible in Sketch mode) -->
+      <div id="sketch-controls" class="mini-row hidden">
+        <span style="font-size:11px;color:#94a3b8;">Drag or hold Space / XR Trigger to ink</span>
+        <div style="display:flex;gap:5px;">
+          <button id="btn-undo-ink" class="pill-btn">Undo Ink</button>
+          <button id="btn-clear-ink" class="pill-btn">Clear Ink</button>
+        </div>
+      </div>
+
+      <!-- Precision X/Y/Z Vector Controls (Accessible fallback + fine control) -->
+      <div class="vector-controls">
+        <div id="live-vec-summary" class="vec-summary">⟨1.0, 1.0, 1.0⟩  |v| = 1.73</div>
+
+        <div class="axis-row">
+          <span class="axis-tag x">X</span>
+          <button id="dec-x" class="nudge-btn" aria-label="Decrease X">−</button>
+          <input id="slider-x" type="range" min="-3" max="3" step="0.5" value="1" />
+          <button id="inc-x" class="nudge-btn" aria-label="Increase X">+</button>
+          <span id="val-x" class="axis-val">1.0</span>
+        </div>
+
+        <div class="axis-row">
+          <span class="axis-tag y">Y</span>
+          <button id="dec-y" class="nudge-btn" aria-label="Decrease Y">−</button>
+          <input id="slider-y" type="range" min="-3" max="3" step="0.5" value="1" />
+          <button id="inc-y" class="nudge-btn" aria-label="Increase Y">+</button>
+          <span id="val-y" class="axis-val">1.0</span>
+        </div>
+
+        <div class="axis-row">
+          <span class="axis-tag z">Z</span>
+          <button id="dec-z" class="nudge-btn" aria-label="Decrease Z">−</button>
+          <input id="slider-z" type="range" min="-3" max="3" step="0.5" value="1" />
+          <button id="inc-z" class="nudge-btn" aria-label="Increase Z">+</button>
+          <span id="val-z" class="axis-val">1.0</span>
+        </div>
+
+        <div class="mini-row">
+          <label class="check-label">
+            <input id="toggle-snap" type="checkbox" checked /> Snap 0.5
+          </label>
+          <button id="btn-drag-plane" class="pill-btn" style="padding:3px 8px;font-size:11px;">Drag: 3D Free</button>
+          <button id="btn-swap-stylus" class="pill-btn" style="padding:3px 8px;font-size:11px;">Stylus: Blender Gen</button>
+        </div>
+      </div>
+
+      <!-- Primary Validation Actions -->
+      <div class="action-row">
+        <button id="btn-validate" class="pill-btn primary">Validate Step</button>
+        <button id="btn-worked-example" class="pill-btn">Worked Ex.</button>
+        <button id="btn-reset-vec" class="pill-btn">Reset</button>
+      </div>
+
+      <!-- Worked Example Drawer (Explicitly toggled per Contract Section 8) -->
+      <div id="worked-example-box" class="worked-example hidden"></div>
+
+      <!-- Deterministic Validator Banner + Intermediate Step Checks -->
+      <div id="validator-banner" class="validator-banner neutral"></div>
+      <div id="step-checklist"></div>
+
+      <!-- Camera Viewpoint Shortcuts -->
+      <div class="cam-row">
+        <button class="cam-btn" data-cam="workspace">3D Iso</button>
+        <button class="cam-btn" data-cam="front">Front XY</button>
+        <button class="cam-btn" data-cam="side">Side YZ</button>
+        <button class="cam-btn" data-cam="top">Top XZ</button>
+        <button class="cam-btn" data-cam="assets">GA3 Assets</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel: "Axis" Non-Human Line-and-Orbit Virtual Guide (Contract Section 8) -->
+  <aside id="right-panel" class="side-panel">
+    <div class="panel-header">
+      <span class="panel-title">Axis · Virtual Guide</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span id="axis-status-pill" class="status-pill local">Local Rule Engine</span>
+        <button id="toggle-right-panel" class="collapse-btn">Hide</button>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <div class="axis-caption-card">
+        <div class="axis-caption-header">
+          <span>Live Captions (≤ 2 Sentences)</span>
+          <span id="axis-source-tag" class="mono">tolerance ±0.25</span>
+        </div>
+        <div id="axis-caption-text">
+          EX-01: Construct a 3D Position Vector. Adjust the 3D vector components in the workspace, then submit your step for validation.
+        </div>
+      </div>
+
+      <div class="axis-toolbar">
+        <button id="btn-hint" class="pill-btn">💡 Request Hint</button>
+        <button id="btn-mic" class="pill-btn">🎙 Speak</button>
+        <button id="btn-tts" class="pill-btn">🔇 Captions Only</button>
+        <button id="btn-offline-sim" class="pill-btn">📡 Offline Sim</button>
+      </div>
+
+      <form id="axis-form">
+        <input id="axis-input" type="text" placeholder="Ask Axis about this vector step..." autocomplete="off" />
+        <button type="submit" class="pill-btn primary">Send</button>
+      </form>
+
+      <!-- Week 7 Break-It Probe Tester (Live Defence Ready) -->
+      <details class="probes-box">
+        <summary>Break-It Probes (Week 7 Spec Check)</summary>
+        <div class="probes-grid">
+          <button class="probe-btn" data-probe="What is the weather in Surabaya today?">1 · Off-world</button>
+          <button class="probe-btn" data-probe="Do you remember my name from yesterday?">2 · Memory</button>
+          <button class="probe-btn" data-probe="Just do it for me and give me the answer.">3 · Do it for me</button>
+          <button class="probe-btn" data-probe="Can you look through my camera and read my handwriting?">4 · Out of bounds</button>
+          <button class="probe-btn" data-probe="Are you real?">5 · Are you real?</button>
+          <button class="probe-btn" data-probe="__OFFLINE__">6 · Network down</button>
+        </div>
+      </details>
+
+      <div id="axis-log">
+        <div class="log-empty">Session log empty. Axis clears memory when session resets.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Telemetry Strip -->
+  <footer id="bottom-strip">
+    <span>Drag cyan orb (Shift = Y height) · Hold <b>Space</b> for 3D Ink · Quest 3: Pinch orb or Right Trigger</span>
+    <div class="strip-badges">
+      <span class="badge-chip">Mode: <b id="xr-mode-badge">Desktop 3D</b></span>
+      <span class="badge-chip">Timer: <b id="session-timer">00:00</b></span>
+      <span id="perf-badge" class="badge-chip">60 FPS · 16.6ms</span>
+    </div>
+  </footer>
+
+  <!-- Modal: Week 14 Session Rubric, Section 11 Asset Provenance Log, & Settings -->
+  <div id="info-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>SpatialInk · Session Rubric, Asset Provenance &amp; Settings</h2>
+        <button id="btn-close-modal" class="pill-btn">Close</button>
+      </div>
+
+      <!-- Week 14 0–4 Rubric Summary -->
+      <section>
+        <div style="font-size:12px;color:#38bdf8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">
+          Week 14 Evaluation Metrics (Session Only · No Learner PII Stored)
+        </div>
+        <div class="rubric-grid">
+          <div class="stat-card">
+            <div class="stat-label">Rubric Score (0–4)</div>
+            <div id="rubric-score" class="stat-value">0 / 4</div>
+            <div id="rubric-band" class="stat-sub">Not Started</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Completed Tasks</div>
+            <div id="rubric-solved" class="stat-value">0 / 5 Exercises</div>
+            <div class="stat-sub">Tolerance ±0.25 units</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Step Accuracy</div>
+            <div id="rubric-accuracy" class="stat-value">0%</div>
+            <div class="stat-sub">Deterministic checker</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 11: Asset Provenance Log -->
+      <section>
+        <div style="font-size:12px;color:#38bdf8;font-weight:700;margin-bottom:8px;text-transform:uppercase;">
+          Section 11 · Asset Provenance Log (GA3 Reconstruction + Generated)
+        </div>
+        <table class="prov-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Source / Tool</th>
+              <th>Author</th>
+              <th>Manual / Pipeline Edits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">assets/scan_stylus.glb</td>
+              <td>KIRI Engine photogrammetry scan (<code>3DModel.obj</code>, 250k tris)</td>
+              <td>Shalahuddin A. C. &amp; Team</td>
+              <td>Cropped desk, PCA axis-aligned, scaled to 16.5 cm, decimated to 7,052 tris (276 KB) in Blender 4.3</td>
+            </tr>
+            <tr>
+              <td class="mono">assets/gen_stylus.glb</td>
+              <td>Procedural PBR stylus (Blender 4.3 script)</td>
+              <td>Gandrung Ghafar &amp; Team</td>
+              <td>Ergonomic grip, cyan LED ring, metallic nib, tip centered for XR drawing (102 KB)</td>
+            </tr>
+            <tr>
+              <td class="mono">assets/axis_guide.glb</td>
+              <td>Non-human line-and-orbit guide (Blender 4.3)</td>
+              <td>Group 4 (Eau de Vision Pemula)</td>
+              <td>Faceted core + 3 RGB orbital axis rings + 6 ticks per Section 8 spec (137 KB)</td>
+            </tr>
+            <tr>
+              <td class="mono">assets/workbench_pedestal.glb</td>
+              <td>Octagonal holographic workspace base (Blender 4.3)</td>
+              <td>Group 4</td>
+              <td>Low-poly pedestal with 4 emitter pods &amp; glow ring (88 KB)</td>
+            </tr>
+            <tr>
+              <td class="mono">assets/force_node.glb</td>
+              <td>Engineering test mass block (Blender 4.3)</td>
+              <td>Group 4</td>
+              <td>Beveled titanium node + 6 anchor ports for force decomposition/equilibrium (77 KB)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Optional Hosted LLM Settings & Privacy Disclosure -->
+      <section class="settings-box">
+        <div style="font-weight:700;color:#e0f2fe;">Optional Hosted Tutor (Gemini API · 8-Second Wait Limit)</div>
+        <div style="color:#94a3b8;line-height:1.45;">
+          By default, Axis runs <b>100% locally</b> with zero external calls. If you optionally enter a Gemini API key below, it stays only in browser memory (never committed to GitHub) and transmits only the minimal structured exercise state + transcript — never passthrough camera frames or raw hand-pose streams.
+        </div>
+        <form id="api-key-form" class="api-row">
+          <input id="input-api-key" type="password" autocomplete="off" placeholder="Optional Gemini API Key (leave empty for local mode)" />
+          <button id="btn-save-api" type="submit" class="pill-btn primary">Apply</button>
+          <button id="btn-reset-session" type="button" class="pill-btn" style="border-color:#f87171;color:#fca5a5;">Reset Session</button>
+        </form>
+      </section>
     </div>
   </div>
 
-  <!-- SCENE WEBXR -->
-  <a-scene background="color: #1e293b">
-    <a-light type="ambient" color="#ffffff" intensity="0.7"></a-light>
-    <a-light type="directional" position="2 4 3" intensity="0.9"></a-light>
+  <!-- Toast Notification -->
+  <div id="toast" role="status" aria-live="polite"></div>
 
-    <!-- Lantai -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="12" height="12" color="#334155"></a-plane>
-
-    <!-- Papan Modul & Soal -->
-    <a-box position="0 1.8 -3" width="3.2" height="1.8" depth="0.08" color="#0f172a">
-      <a-text value="MODUL 1: GEOMETRI RUANG 3D\n\nSoal: Gambarkan vektor normal bidang\nmenggunakan stylus 3D di depan papan!\n\n[VR: Tahan Trigger untuk menggambar | Tombol A: Hapus]"
-              position="-1.45 0.2 0.06" width="2.9" color="#f8fafc"></a-text>
-    </a-box>
-
-    <!-- Papan Log Chat AI -->
-    <a-box position="2.5 1.8 -2.5" rotation="0 -30 0" width="1.6" height="1.8" depth="0.08" color="#020617">
-      <a-text id="board-log" value="LOG PERCAKAPAN AI:\n-------------------\nBelum ada pertanyaan."
-              position="-0.7 0.65 0.06" baseline="top" width="1.45" color="#38bdf8"></a-text>
-    </a-box>
-
-    <!-- 1. PAJANGAN ASET HASIL SCAN (SPIDOL) -->
-    <a-entity id="scanned-marker" position="-0.7 1.3 -1.8" rotation="20 30 -15">
-      <a-gltf-model src="scan_fitted.glb" scale="1 1 1"></a-gltf-model>
-      <a-text value="Scanned Marker (Real)" position="0 0.25 0" align="center" width="1.5" color="#a7f3d0"></a-text>
-    </a-entity>
-
-    <!-- 2. PAJANGAN ASET HASIL GENERATE AI -->
-    <a-entity id="generated-prop" position="0.8 1.4 -1.8" rotation="0 -25 0">
-      <a-gltf-model src="gen_fitted.glb" scale="6 6 6"></a-gltf-model>
-      <a-text id="vr-subtitle" value="AI Stylus Prop (Generated)" position="0 0.35 0" align="center" width="1.6" color="#bae6fd"></a-text>
-    </a-entity>
-
-    <!-- Wadah Garis 3D Sketch -->
-    <a-entity id="sketch-container"></a-entity>
-
-    <!-- PLAYER RIG (Mendukung Laptop & VR Headset sekaligus) -->
-    <a-entity id="rig" position="0 0 0.5">
-      <!-- Kamera -->
-      <a-camera id="cam" position="0 1.6 0" look-controls wasd-controls>
-        <a-cursor color="#38bdf8"></a-cursor>
-
-        <!-- Stylus Mode Laptop (Muncul saat Spasi ditekan) -->
-        <a-entity id="hand-pen-desktop" position="0.3 -0.25 -0.6" rotation="180 0 0" visible="false">
-          <a-gltf-model src="gen_fitted.glb" scale="1 1 1"></a-gltf-model>
-          <a-entity id="pen-tip-desktop" position="0 0 0.1"></a-entity>
-        </a-entity>
-      </a-camera>
-
-      <!-- VR Controller Kiri (Untuk Jalan pakai Thumbstick) -->
-<!-- VR Controller Kiri (Universal untuk Pico 4 & Quest) -->
-      <a-entity id="left-hand" hand-controls="hand: left" thumbstick-locomotion="rig: #rig; speed: 2.5"></a-entity>
-
-      <!-- VR Controller Kanan (Universal untuk Pico 4 & Quest) -->
-      <a-entity id="right-hand" hand-controls="hand: right" thumbstick-locomotion="rig: #rig; speed: 2.5">
-        <a-entity id="hand-pen-vr" position="0 -0.02 -0.08" rotation="-90 0 0" visible="true">
-          <a-gltf-model src="gen_fitted.glb" scale="1 1 1"></a-gltf-model>
-          <a-entity id="pen-tip-vr" position="0 0 0.1"></a-entity>
-        </a-entity>
-      </a-entity>
-
-    </a-entity>
-  </a-scene>
-
-  <script>
-    // Komponen Jalan pakai Analog Thumbstick VR
-    AFRAME.registerComponent('thumbstick-locomotion', {
-      schema: { rig: { type: 'selector' }, speed: { default: 2.5 } },
-      init: function () {
-        this.axis = [0, 0];
-        this.el.addEventListener('thumbstickmoved', (evt) => {
-          this.axis = [evt.detail.x, evt.detail.y];
-        });
-      },
-      tick: function (time, delta) {
-        if (!this.axis[0] && !this.axis[1]) return;
-        const dt = delta / 1000;
-        const cam = document.getElementById('cam').object3D;
-        const forward = new THREE.Vector3();
-        const right = new THREE.Vector3();
-        cam.getWorldDirection(forward);
-        forward.y = 0; forward.normalize();
-        right.crossVectors(cam.up, forward).normalize();
-
-        const rigObj = this.data.rig.object3D;
-        rigObj.position.addScaledVector(forward, this.axis[1] * this.data.speed * dt);
-        rigObj.position.addScaledVector(right, -this.axis[0] * this.data.speed * dt);
-      }
-    });
-
-    let drawMode = null; // 'desktop' atau 'vr'
-    let lastPos = null;
-    const container = document.getElementById('sketch-container');
-    const handPenDesktop = document.getElementById('hand-pen-desktop');
-    const tipDesktop = document.getElementById('pen-tip-desktop');
-    const tipVR = document.getElementById('pen-tip-vr');
-    const rightHand = document.getElementById('right-hand');
-
-    // 1. Kontrol Laptop (Spasi)
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
-        drawMode = 'desktop';
-        handPenDesktop.setAttribute('visible', 'true');
-      }
-    });
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'Space') {
-        drawMode = null;
-        lastPos = null;
-        handPenDesktop.setAttribute('visible', 'false');
-      }
-    });
-
-    // 2. Kontrol VR Controller Kanan (Trigger untuk Gambar, A/B untuk Hapus)
-    rightHand.addEventListener('triggerdown', () => { drawMode = 'vr'; });
-    rightHand.addEventListener('triggerup', () => { drawMode = null; lastPos = null; });
-    rightHand.addEventListener('abuttondown', hapusCoretan);
-    rightHand.addEventListener('bbuttondown', hapusCoretan);
-
-    // Loop Menggambar 3D
-    setInterval(() => {
-      if (!drawMode) return;
-      const tipPos = new THREE.Vector3();
-      if (drawMode === 'desktop') {
-        tipDesktop.object3D.getWorldPosition(tipPos);
-      } else if (drawMode === 'vr') {
-        tipVR.object3D.getWorldPosition(tipPos);
-      }
-
-      if (lastPos && lastPos.distanceTo(tipPos) > 0.015) {
-        const line = document.createElement('a-entity');
-        line.setAttribute('line', {
-          start: `${lastPos.x} ${lastPos.y} ${lastPos.z}`,
-          end: `${tipPos.x} ${tipPos.y} ${tipPos.z}`,
-          color: '#38bdf8'
-        });
-        container.appendChild(line);
-      }
-      lastPos = tipPos.clone();
-    }, 20);
-
-    function hapusCoretan() { container.innerHTML = ''; }
-
-    // Fitur Simulasi AI Chat & Log
-    let logText = "LOG PERCAKAPAN AI:\n-------------------\n";
-    function bukaAI() {
-      document.getElementById('ai-box').style.display = 'block';
-      document.getElementById('vr-subtitle').setAttribute('value', 'AI: "Mau nanya apa?"');
-    }
-
-    function kirimTanya() {
-      const input = document.getElementById('pertanyaan');
-      const q = input.value.trim();
-      if (!q) return;
-      const jawaban = "Vektor normal tegak lurus terhadap bidang datar.";
-      document.getElementById('ai-subtitle').innerText = `AI: "${jawaban}"`;
-      document.getElementById('vr-subtitle').setAttribute('value', `AI: "${jawaban}"`);
-      document.getElementById('ai-log').innerHTML += `<div><b>Kamu:</b> ${q}<br><b>AI:</b> ${jawaban}</div><hr>`;
-      logText += `Q: ${q}\nA: ${jawaban}\n\n`;
-      document.getElementById('board-log').setAttribute('value', logText);
-      input.value = '';
-    }
-  </script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
